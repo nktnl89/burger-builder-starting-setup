@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { connect } from 'react-redux';
 import axios from '../../../axios-orders';
 import classes from './ContactData.css';
 
@@ -7,79 +8,145 @@ import Spinner from '../../../components/UI/Spinner/Spinner';
 import Input from '../../../components/UI/Input/Input';
 
 class ContactData extends Component {
-    elementType(elementType, configType, configPlaceholder, defaultValue, options, validationRules) {
-        return {
-            elementType: elementType,
-            elementConfig: {
-                type: configType,
-                placeholder: configPlaceholder,
-                options: options
-            },
-            value: defaultValue,
-            validation: validationRules,
-            valid: false,
-            touched: false
-        }
-    }
 
     state = {
         orderForm: {
-            name: this.elementType('input',
-                'text',
-                'Your Name',
-                '',
-                null,
-                { required: true, minLength: 3 }),
-            street: this.elementType('input', 'text', 'Street', '', null, { required: true }),
-            zipcode: this.elementType('input', 'text', 'ZIP Code', '', null, { required: true, minLength: 6, maxLength: 6 }),
-            country: this.elementType('input', 'text', 'Country', '', null, { required: true }),
-            email: this.elementType('input', 'email', 'Your Email', '', null, { required: true }),
-            deliveryMethod: this.elementType('select', 'text', null, 'fastest',
-                [
-                    { value: 'fastest', displayValue: 'Fastest' },
-                    { value: 'cheapest', displayValue: 'Cheapest' }
-                ],
-                { required: true }
-            )
+            name: {
+                elementType: 'input',
+                elementConfig: {
+                    type: 'text',
+                    placeholder: 'Your Name'
+                },
+                value: '',
+                validation: {
+                    required: true
+                },
+                valid: false,
+                touched: false
+            },
+            street: {
+                elementType: 'input',
+                elementConfig: {
+                    type: 'text',
+                    placeholder: 'Street'
+                },
+                value: '',
+                validation: {
+                    required: true
+                },
+                valid: false,
+                touched: false
+            },
+            zipCode: {
+                elementType: 'input',
+                elementConfig: {
+                    type: 'text',
+                    placeholder: 'ZIP Code'
+                },
+                value: '',
+                validation: {
+                    required: true,
+                    minLength: 5,
+                    maxLength: 5,
+                    isNumeric: true
+                },
+                valid: false,
+                touched: false
+            },
+            country: {
+                elementType: 'input',
+                elementConfig: {
+                    type: 'text',
+                    placeholder: 'Country'
+                },
+                value: '',
+                validation: {
+                    required: true
+                },
+                valid: false,
+                touched: false
+            },
+            email: {
+                elementType: 'input',
+                elementConfig: {
+                    type: 'email',
+                    placeholder: 'Your E-Mail'
+                },
+                value: '',
+                validation: {
+                    required: true,
+                    isEmail: true
+                },
+                valid: false,
+                touched: false
+            },
+            deliveryMethod: {
+                elementType: 'select',
+                elementConfig: {
+                    options: [
+                        { value: 'fastest', displayValue: 'Fastest' },
+                        { value: 'cheapest', displayValue: 'Cheapest' }
+                    ]
+                },
+                value: '',
+                validation: {},
+                valid: true
+            }
         },
-        loading: false,
-        formIsValid: false
+        formIsValid: false,
+        loading: false
     }
 
     orderHandler = (event) => {
         event.preventDefault();
         this.setState({ loading: true });
         const formData = {};
-        for (let formElementId in this.state.orderForm) {
-            formData[formElementId] = this.state.orderForm[formElementId].value;
+        for (let formElementIdentifier in this.state.orderForm) {
+            formData[formElementIdentifier] = this.state.orderForm[formElementIdentifier].value;
         }
         const order = {
-            ingridients: this.props.ingridients,
+            ingredients: this.props.ings,
             price: this.props.price,
             orderData: formData
-        };
-
+        }
         axios.post('/orders.json', order)
             .then(response => {
                 this.setState({ loading: false });
                 this.props.history.push('/');
             })
             .catch(error => {
-                this.setState({ loading: false })
+                this.setState({ loading: false });
             });
     }
 
-    checkValidation(value, rules) {
+    checkValidity(value, rules) {
         let isValid = true;
+        if (!rules) {
+            return true;
+        }
+
         if (rules.required) {
             isValid = value.trim() !== '' && isValid;
         }
+
         if (rules.minLength) {
-            isValid = value.length >= rules.minLength && isValid;
+            isValid = value.length >= rules.minLength && isValid
         }
+
         if (rules.maxLength) {
-            isValid = value.length <= rules.maxLength && isValid;
+            isValid = value.length <= rules.maxLength && isValid
         }
+
+        if (rules.isEmail) {
+            const pattern = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
+            isValid = pattern.test(value) && isValid
+        }
+
+        if (rules.isNumeric) {
+            const pattern = /^\d+$/;
+            isValid = pattern.test(value) && isValid
+        }
+
         return isValid;
     }
 
@@ -91,7 +158,7 @@ class ContactData extends Component {
             ...updatedOrderForm[inputIdentifier]
         };
         updatedFormElement.value = event.target.value;
-        updatedFormElement.valid = this.checkValidation(updatedFormElement.value, updatedFormElement.validation);
+        updatedFormElement.valid = this.checkValidity(updatedFormElement.value, updatedFormElement.validation);
         updatedFormElement.touched = true;
         updatedOrderForm[inputIdentifier] = updatedFormElement;
 
@@ -99,7 +166,6 @@ class ContactData extends Component {
         for (let inputIdentifier in updatedOrderForm) {
             formIsValid = updatedOrderForm[inputIdentifier].valid && formIsValid;
         }
-
         this.setState({ orderForm: updatedOrderForm, formIsValid: formIsValid });
     }
 
@@ -111,30 +177,39 @@ class ContactData extends Component {
                 config: this.state.orderForm[key]
             });
         }
-
-        let form = (<form onSubmit={this.orderHandler}>
-            {formElementsArray.map(formElement => (
-                <Input key={formElement.id}
-                    elementType={formElement.config.elementType}
-                    elementConfig={formElement.config.elementConfig}
-                    invalid={!formElement.config.valid}
-                    value={formElement.config.value}
-                    touched={formElement.config.touched}
-                    changed={(event) => this.inputChangedHandler(event, formElement.id)}
-                    shouldValidate={formElement.config.validation} />
-            ))}
-            <Button buttonType="Success" disabled={!this.state.formIsValid}>ORDER</Button>
-        </form>);
+        let form = (
+            <form onSubmit={this.orderHandler}>
+                {formElementsArray.map(formElement => (
+                    <Input
+                        key={formElement.id}
+                        elementType={formElement.config.elementType}
+                        elementConfig={formElement.config.elementConfig}
+                        value={formElement.config.value}
+                        invalid={!formElement.config.valid}
+                        shouldValidate={formElement.config.validation}
+                        touched={formElement.config.touched}
+                        changed={(event) => this.inputChangedHandler(event, formElement.id)} />
+                ))}
+                <Button btnType="Success" disabled={!this.state.formIsValid}>ORDER</Button>
+            </form>
+        );
         if (this.state.loading) {
             form = <Spinner />;
         }
         return (
             <div className={classes.ContactData}>
-                <h4>Enter your contact data</h4>
+                <h4>Enter your Contact Data</h4>
                 {form}
             </div>
         );
     }
 }
 
-export default ContactData;
+const mapStateToProps = state => {
+    return {
+        ings: state.ingridients,
+        price: state.totalPrice
+    }
+}
+
+export default connect(mapStateToProps)(ContactData);
